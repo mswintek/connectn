@@ -1,0 +1,301 @@
+
+from typing import TypedDict, TypeVar
+T = TypeVar('T')
+
+"""Sets up dictionary"""
+class GameState(TypedDict):
+    board: list[list[str]]
+    blank_char: str
+    cur_player_turn: int
+    num_rows: int
+    num_cols: int
+    player_pieces: list[str]
+    pieces_to_win: int
+
+
+"""main function that calls all others"""
+def play_connect_n() -> None:
+    game_state = setup_the_game()
+    play_game(game_state)
+    declare_the_results(game_state)
+
+
+"""sets up game_state"""
+def setup_the_game() -> GameState:
+    blank_char = '*'
+    num_rows = int(get_valid_rows())
+    num_cols = int(get_valid_cols())
+    board = make_board(num_rows, num_cols, blank_char)
+    pieces_to_win = get_number_pieces_to_win(num_rows, num_cols)
+    cur_player_turn = 1
+    player_pieces = ['X','O']
+    return{
+        'board': board,
+        'blank_char': blank_char,
+        'cur_player_turn': cur_player_turn,
+        'num_rows': num_rows,
+        'num_cols' : num_cols,
+        'player_pieces': player_pieces,
+        'pieces_to_win': pieces_to_win
+    }
+
+
+"""function that loops through turns and winning/ties"""
+def play_game(game_state) -> GameState:
+    while not is_game_over(game_state):
+        print_board(game_state['board'])
+        game_state = take_turn(game_state)
+        if someone_won(game_state):
+            break
+        game_state = switch_turn(game_state)
+    print_board(game_state['board'])
+    return game_state
+
+
+"""takes user input for number of rows"""
+def get_valid_rows() -> int:
+    num_rows = input("Enter the number of rows: ").strip()
+    while not is_valid_cols_rows(num_rows):
+        num_rows = input("Enter the number of rows: ").strip()
+    num_rows = int(num_rows)
+    return num_rows
+
+
+"""takes user input for number of columns"""
+def get_valid_cols() -> int:
+    num_cols = input("Enter the number of columns: ").strip()
+    while not is_valid_cols_rows(num_cols):
+        num_cols = input("Enter the number of columns: ").strip()
+    num_cols = int(num_cols)
+    return num_cols
+
+
+"""determines if cols and rows are valid"""
+def is_valid_cols_rows(value:int|str|float) -> bool:
+    if not value.isdigit():
+        return False
+    elif int(value) <= 0:
+        return False
+    else:
+        return True
+
+
+"""makes the empty board"""
+def make_board(num_rows, num_cols, blank_char) -> list[list[str]]:
+    board = []
+    for row_index in range(1, num_rows+1):
+        row = []
+        for col_index in range(1, num_cols+1):
+            row.append('*')
+        board.append(row)
+    headers = len(board) -1
+    for row_index in board:
+        row_index.insert(0, headers)
+        headers -= 1
+    col_headers = [" "]
+    for col_index in range (0, num_cols):
+        col_headers.append(col_index)
+    board.insert(0, col_headers)
+    return board
+
+
+"""prints the board"""
+def print_board(board) -> list[list[str]]:
+    print()
+    for row in board:
+        for element in row:
+            print(element, end = " ")
+        print()
+    return board
+
+
+"""takes user input for how many pieces needed to win"""
+def get_number_pieces_to_win(num_rows, num_cols) -> int:
+    pieces_to_win = input("Enter the number of pieces in a row to win: ").strip()
+    while not is_valid_number_to_win(pieces_to_win, num_rows, num_cols):
+        pieces_to_win = input("Enter the number of pieces in a row to win: ").strip()
+    pieces_to_win = int(pieces_to_win)
+    return pieces_to_win
+
+
+"""validates number of pieces needed to win"""
+def is_valid_number_to_win(pieces_to_win:int|str|float, num_rows:int, num_cols:int) -> bool:
+    if not pieces_to_win.isdigit():
+        return False
+    elif int(pieces_to_win) <= 0:
+        return False
+    else:
+        return True
+
+
+"""switches turns"""
+def switch_turn(game_state: GameState) -> GameState:
+    if game_state['cur_player_turn'] == 1:
+        game_state['cur_player_turn'] = 2
+    else:
+        game_state['cur_player_turn'] = 1
+    return game_state
+
+
+"""places the piece on the board"""
+def take_turn(game_state: GameState) -> GameState:
+    col = get_valid_move_from_player(game_state)
+    col = int(col) + 1
+    cur_player_piece = game_state['player_pieces'][game_state['cur_player_turn']- 1]
+    for rows in range(game_state['num_rows'], -1, -1):
+        if game_state['board'][rows][col]== game_state['blank_char']:
+            game_state['board'][rows][col]= cur_player_piece
+            break
+    return game_state
+
+
+"""takes user input for player move"""
+def get_valid_move_from_player(game_state: GameState) -> str :
+    move = input('Enter the column you want to play in: ').strip()
+    while not is_valid_move(move, game_state):
+        move = input('Enter the column you want to play in: ').strip()
+    return move
+
+
+"""validates user inputted move"""
+def is_valid_move(move: str, game_state: GameState) -> bool:
+    if not represents_a_positive_int(move):
+        return False
+    elif not (0 <= int(move) <= len(game_state['board'])+1):
+        return False
+    elif column_full(move, game_state):
+        return False
+    else:
+        return True
+
+
+"""determines if the string inputted is a positive integer"""
+def represents_a_positive_int(string:str) -> bool:
+    return string.strip().isdigit()
+
+
+"""determines if the column is full"""
+def column_full(move, game_state) -> bool:
+    is_full = False
+    move = int(move) +1
+    for i in range(game_state['num_rows'] - 1 , -1, -1):
+        if game_state['board'][i][move] == "*":
+            return is_full
+    return True
+
+
+"""checks if a horizontal win occured"""
+def won_horizontally(game_state) -> bool:
+    in_a_row = 0
+    for i in range(game_state['num_rows'] +1):
+        for j in range(game_state['num_cols'] +1):
+            if j+1 <= game_state['num_cols']:
+                if (game_state['board'][i][j] == game_state['board'][i][j+1] and game_state['board'][i][j] != '*'):
+                    in_a_row +=1
+                    if in_a_row >= (game_state['pieces_to_win'] -1):
+                        return True
+                else:
+                    in_a_row = 0
+            else:
+                break
+    return False
+
+
+"""determines if a vertical win occured"""
+def won_vertically(game_state) -> bool:
+    in_a_row = 0
+    for j in range(game_state['num_cols'] + 1):
+        for i in range(game_state['num_rows'] + 1):
+            if i +1 <= game_state['num_rows']:
+                if (game_state['board'][i][j] == game_state['board'][i +1][j] and game_state['board'][i][j] != '*'):
+                    in_a_row +=1
+                    if in_a_row >= (game_state['pieces_to_win'] -1):
+                        return True
+                else:
+                    in_a_row = 0
+            else:
+                break
+    return False
+
+
+"""determines if either diagonal win occured"""
+def won_diagonally(game_state) -> bool:
+    diag_win_checker = False
+    if right_diag_win(game_state):
+        diag_win_checker = True
+    elif left_diag_win(game_state):
+        diag_win_checker = True
+    return diag_win_checker
+
+
+"""determines if a right diagonal in occured"""
+def right_diag_win(game_state) -> bool:
+    to_win = game_state['pieces_to_win']
+    right_diag_checker = True
+    for i in range(game_state['num_rows'] - to_win + 1):
+        for j in range(game_state['num_cols'] - to_win + 1):
+            right_diag_checker = True
+        if game_state['board'][i][j] == "*":
+            right_diag_checker = False
+        else:
+            for k in range(to_win):
+                if game_state['board'][i][j] != game_state['board'][i+k][j+k]:
+                    right_diag_checker = False
+                    break
+        if right_diag_checker:
+            return right_diag_checker
+        return False
+
+
+"""determines if a left diagonal win occured"""
+def left_diag_win(game_state) -> bool:
+    to_win = game_state['pieces_to_win']
+    for row in range(len(game_state['board']) - to_win + 1):
+        for col in range(len(game_state['board'][row]) - to_win - 1,len(game_state['board'][0])):
+            left_diag_checker = True
+        if game_state['board'][row][col] == "*":
+            left_diag_checker = False
+        else:
+            for i in range(to_win):
+                if game_state['board'][row][col] != game_state['board'][row+i][col-i]:
+                    left_diag_checker = False
+                    break
+        if left_diag_checker:
+            return left_diag_checker
+        return False
+
+
+"""determines if someone won or there was a tie"""
+def is_game_over(game_state) -> bool:
+    return someone_won(game_state) or tie(game_state)
+
+
+"""determines if there was a tie"""
+def tie(game_state) -> bool:
+    return is_board_full(game_state) and not someone_won(game_state)
+
+
+"""determines if the board is full"""
+def is_board_full(game_state: GameState) -> bool:
+    for row in game_state['board']:
+        for piece in row:
+            if piece == game_state['blank_char']:
+                return False
+    return True
+
+
+"""determines if someone won horizontally, vertically, or diagonally"""
+def someone_won(game_state) -> bool:
+    return won_horizontally(game_state) or won_vertically(game_state) or won_diagonally(game_state)
+
+
+"""prints the outcome of the game"""
+def declare_the_results(game_state:GameState) -> None:
+    if someone_won(game_state):
+        winner = game_state['cur_player_turn']
+        print(f'Player {winner} won!')
+    else:
+        print('Tie Game')
+
+"""main function"""
+play_connect_n()
